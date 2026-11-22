@@ -20,7 +20,7 @@ There is a local demo account with fictional chats. It needs no API keys and no 
 
 1. Follow the [compilation guide](#telegram-ios-source-code-compilation-guide) below, but clone this branch:
    ```
-   git clone --recursive -j8 -b anti-spoiler https://github.com/likefnaticcs/Telegram-iOS.git
+   git clone --recursive -j8 -b anti-spoiler https://github.com/likefnaticcs/anti-spoilers.git
    ```
 2. In the configuration file set `"api_id": "1"` and `"api_hash": "placeholder"`. With these values the app opens the demo by itself and keeps its data.
 3. Launch arguments: `--demo` starts again with clean data, `--demo-premium` (together with `--demo`) adds Premium to the demo account.
