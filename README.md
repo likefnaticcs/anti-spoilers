@@ -1,3 +1,56 @@
+# Anti-Spoilers for Telegram iOS
+
+An unofficial feature concept on top of Telegram iOS 13.0.0 (`release-13.0.0`). It is not affiliated with Telegram.
+
+You add a film, series or game, and every incoming post that mentions it is covered until you tap it. When you have finished it, press **I'm Caught Up** and everything becomes visible again.
+
+## What it does
+
+- **Settings > Anti-Spoilers**: an on/off switch, hiding of photos and videos, topics, popular topics, finished topics, and chats where nothing is hidden.
+- **Topics with keywords**: keyword chips with suggestions. `GTA 6`, `GTA-6` and `#gta6` are the same keyword, `GTA 60` is not.
+- **Hide as Spoiler** in the menu of any incoming post. The topic is taken from the post and can be edited before saving.
+- **I'm Caught Up** in the menu of a hidden post and in the topic. The topic moves to the Caught Up section.
+- **Only Spoilers** mode for Telegram Premium: news and reviews stay visible, only posts marked as spoilers are covered.
+- Covered places: bubbles and albums, chat list, search, replies, the reply and forward panel, pinned messages, shared media and the in-app banner.
+- Text uses Telegram's own spoiler effect, media uses the spoiler overlay. Your own messages are never hidden.
+
+## Demo mode
+
+There is a local demo account with fictional chats. It needs no API keys and no phone number, and the account never connects to the network.
+
+1. Follow the [compilation guide](#telegram-ios-source-code-compilation-guide) below, but clone this branch:
+   ```
+   git clone --recursive -j8 -b anti-spoiler https://github.com/likefnaticcs/Telegram-iOS.git
+   ```
+2. In the configuration file set `"api_id": "1"` and `"api_hash": "placeholder"`. With these values the app opens the demo by itself and keeps its data.
+3. Launch arguments: `--demo` starts again with clean data, `--demo-premium` (together with `--demo`) adds Premium to the demo account.
+
+A new post about GTA 6 arrives a few seconds after every launch. Built with Xcode 26.6 and Bazel 9.2.0, with app extensions disabled.
+
+## What is not real yet
+
+- **Only Spoilers needs a server.** In the demo the posts are marked by hand with `SpoilerClassificationMessageAttribute`, no AI runs in the app.
+- **Popular topics are hardcoded.** The release version would receive them from the server.
+- **Settings are stored on the device** and are not synchronized between devices.
+- **Not covered**: system push notifications, link previews (they stay hidden even after the text is revealed), the Links tab, polls, voice messages, stories, rich articles and captions in the fullscreen gallery.
+- Keywords match whole words, without word forms. Strings are English only.
+
+## Where the code is
+
+| Part | Path |
+| --- | --- |
+| Settings, matching, popular topics | `submodules/TelegramUIPreferences/Sources/AntiSpoilerSettings.swift` |
+| Which messages are hidden, topic suggestions | `submodules/AccountContext/Sources/AntiSpoiler.swift` |
+| Settings screens | `submodules/SettingsUI/Sources/AntiSpoiler/` |
+| Label in the bubble | `submodules/TelegramUI/Components/Chat/ChatMessageAntiSpoilerBubbleContentNode/` |
+| Post menu | `submodules/TelegramUI/Sources/AntiSpoilerContextMenu.swift` |
+| Spoiler mark of a message | `submodules/TelegramCore/Sources/SyncCore/SyncCore_SpoilerClassificationMessageAttribute.swift` |
+| Demo mode | `submodules/TelegramUI/Sources/DemoMode.swift`, `submodules/TelegramCore/Sources/Account/DemoAccount.swift` |
+
+The feature and the demo mode are separate commits, so the feature can be taken without the demo.
+
+---
+
 # Telegram iOS Source Code Compilation Guide
 
 We welcome all developers to use our API and source code to create applications on our platform.
