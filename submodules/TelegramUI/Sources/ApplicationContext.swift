@@ -291,7 +291,14 @@ final class AuthorizedApplicationContext {
         }))
 
         let engine = context.engine
-        self.notificationMessagesDisposable.set((context.account.stateManager.notificationMessages
+        let notificationMessages: Signal<[([Message], PeerGroupId, Bool, MessageHistoryThreadData?)], NoError>
+        if DemoMode.isEnabled {
+            notificationMessages = DemoMode.notificationMessages.signal()
+            DemoMode.scheduleIncomingMessage(postbox: context.account.postbox)
+        } else {
+            notificationMessages = context.account.stateManager.notificationMessages
+        }
+        self.notificationMessagesDisposable.set((notificationMessages
         |> mapToSignal { messageList -> Signal<[([Message], PeerGroupId, Bool, MessageHistoryThreadData?)], NoError> in
             return engine.data.get(EngineDataMap(
                 messageList.compactMap { item -> TelegramEngine.EngineData.Item.Messages.ChatListIndex? in

@@ -321,6 +321,12 @@ public func accountWithId(accountManager: AccountManager<TelegramAccountManagerT
                             }
                         }
                         
+                        if state == nil, let demoAccountSetup {
+                            let demoState = demoAccountSetup(postbox, transaction)
+                            transaction.setState(demoState)
+                            state = demoState
+                        }
+                        
                         let appConfig = transaction.getPreferencesEntry(key: PreferencesKeys.appConfiguration)?.get(AppConfiguration.self) ?? .defaultValue
                         
                         return (state, localizationSettings, proxySettings, transaction.getPreferencesEntry(key: PreferencesKeys.networkSettings)?.get(NetworkSettings.self), appConfig)
@@ -1357,7 +1363,7 @@ public class Account {
         
         self.network.loggedOut = { [weak self] in
             Logger.shared.log("Account", "network logged out")
-            if let strongSelf = self {
+            if let strongSelf = self, demoAccountSetup == nil {
                 strongSelf._loggedOut.set(true)
                 strongSelf.callSessionManager.dropAll()
             }
@@ -1398,8 +1404,12 @@ public class Account {
                     }
             }
         }
-        self.networkStateValue.set(networkStateSignal
-        |> distinctUntilChanged)
+        if demoAccountSetup != nil {
+            self.networkStateValue.set(.single(.online(proxy: nil)))
+        } else {
+            self.networkStateValue.set(networkStateSignal
+            |> distinctUntilChanged)
+        }
         
         self.networkTypeValue.set(currentNetworkType())
         let atomicCurrentNetworkType = self.atomicCurrentNetworkType
@@ -1422,7 +1432,7 @@ public class Account {
             if shouldBeMaster == .always && !isMaster {
                 self?.postbox.becomeMasterClient()
             }
-            return (shouldBeMaster == .now || shouldBeMaster == .always) && isMaster
+            return (shouldBeMaster == .now || shouldBeMaster == .always) && isMaster && demoAccountSetup == nil
         }
         |> distinctUntilChanged
         

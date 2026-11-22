@@ -570,6 +570,7 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
         
         let apiId: Int32 = buildConfig.apiId
         let apiHash: String = buildConfig.apiHash
+        DemoMode.isBuiltWithoutApiKeys = apiHash == "placeholder"
         let languagesCategory = "ios"
         
         let autolockDeadine: Signal<Int32?, NoError>
@@ -712,10 +713,16 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
             let testDataPath = appGroupUrl.path + "/telegram-ui-tests-data"
             let _ = try? FileManager.default.removeItem(atPath: testDataPath)
             rootPath = rootPathForBasePath(testDataPath)
+        } else if DemoMode.isEnabled {
+            let demoDataPath = appGroupUrl.path + "/telegram-demo-data"
+            if DemoMode.shouldReset {
+                let _ = try? FileManager.default.removeItem(atPath: demoDataPath)
+            }
+            rootPath = rootPathForBasePath(demoDataPath)
         } else {
             rootPath = rootPathForBasePath(appGroupUrl.path)
         }
-        if !isUITest {
+        if !isUITest && !DemoMode.isEnabled {
             performAppGroupUpgrades(appGroupPath: appGroupUrl.path, rootPath: rootPath)
         }
         
@@ -1058,6 +1065,10 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
 
         telegramUIDeclareEncodables()
         initializeAccountManagement()
+        
+        if DemoMode.isEnabled {
+            DemoMode.setup(accountManager: accountManager)
+        }
 
         if isUITest,
            let deleteIdx = CommandLine.arguments.firstIndex(of: "--delete-test-account"),
