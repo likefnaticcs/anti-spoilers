@@ -78,6 +78,7 @@ swift_library(
         "//submodules/TelegramUI/Components/Chat/ChatMessageCommunityChangedBubbleContentNode",
         "//submodules/TelegramUI/Components/Chat/ChatMessageBirthdateSuggestionContentNode",
         "//submodules/TelegramUI/Components/Chat/ChatMessageRestrictedBubbleContentNode",
+        "//submodules/TelegramUI/Components/Chat/ChatMessageAntiSpoilerBubbleContentNode",
         "//submodules/TelegramUI/Components/Chat/ChatMessageStoryMentionContentNode",
         "//submodules/TelegramUI/Components/Chat/ChatMessageUnsupportedBubbleContentNode",
         "//submodules/TelegramUI/Components/Chat/ChatMessageWallpaperBubbleContentNode",

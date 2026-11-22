@@ -892,7 +892,7 @@ private final class SparseItemGridBindingImpl: SparseItemGridBinding, ListShimme
                 }
 
                 let message = item.message
-                var hasSpoiler = message.attributes.contains(where: { $0 is MediaSpoilerMessageAttribute }) && !self.revealedSpoilerMessageIds.contains(message.id)
+                var hasSpoiler = (message.attributes.contains(where: { $0 is MediaSpoilerMessageAttribute }) || self.context.isMediaHiddenByAntiSpoiler(message: message)) && !self.revealedSpoilerMessageIds.contains(message.id)
                 if message.isSensitiveContent(platform: "ios") {
                     hasSpoiler = true
                 }

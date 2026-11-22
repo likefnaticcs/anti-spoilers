@@ -288,6 +288,9 @@ public final class SharedAccountContextImpl: SharedAccountContext {
     public let currentChatSettings: Atomic<ChatSettings>
     private var chatSettingsDisposable: Disposable?
     
+    public let currentAntiSpoilerSettings = Atomic<AntiSpoilerSettings>(value: AntiSpoilerSettings.defaultSettings)
+    private var antiSpoilerSettingsDisposable: Disposable?
+    
     public let currentStickerSettings: Atomic<StickerSettings>
     private var stickerSettingsDisposable: Disposable?
     
@@ -528,6 +531,12 @@ public final class SharedAccountContextImpl: SharedAccountContext {
                     let _ = strongSelf.currentChatSettings.swap(settings)
                 }
             }
+        })
+        
+        let currentAntiSpoilerSettings = self.currentAntiSpoilerSettings
+        self.antiSpoilerSettingsDisposable = (antiSpoilerSettings(accountManager: self.accountManager)
+        |> deliverOnMainQueue).start(next: { settings in
+            let _ = currentAntiSpoilerSettings.swap(settings)
         })
         
         let immediateExperimentalUISettingsValue = self.immediateExperimentalUISettingsValue
@@ -1130,6 +1139,7 @@ public final class SharedAccountContextImpl: SharedAccountContext {
         self.mediaInputSettingsDisposable?.dispose()
         self.mediaDisplaySettingsDisposable?.dispose()
         self.chatSettingsDisposable?.dispose()
+        self.antiSpoilerSettingsDisposable?.dispose()
         self.stickerSettingsDisposable?.dispose()
         self.callDisposable?.dispose()
         self.groupCallDisposable?.dispose()

@@ -70,6 +70,7 @@ import ChatMessageProfilePhotoSuggestionContentNode
 import ChatMessageCommunityChangedBubbleContentNode
 import ChatMessageBirthdateSuggestionContentNode
 import ChatMessageRestrictedBubbleContentNode
+import ChatMessageAntiSpoilerBubbleContentNode
 import ChatMessageStoryMentionContentNode
 import ChatMessageUnsupportedBubbleContentNode
 import ChatMessageWallpaperBubbleContentNode
@@ -392,6 +393,10 @@ private func contentNodeMessagesAndClassesForItem(_ item: ChatMessageItem) -> ([
         inner: for media in message.media {
             if let webpage = media as? TelegramMediaWebpage {
                 if case let .Loaded(content) = webpage.content {
+                    // The preview would reveal the spoiler that is hidden in the text
+                    if message.adAttribute == nil && item.associatedData.antiSpoilerTopics[message.id] != nil {
+                        break inner
+                    }
                     if let story = content.story {
                         if let storyItem = message.associatedStories[story.storyId], !storyItem.data.isEmpty {
                         } else {
@@ -445,6 +450,10 @@ private func contentNodeMessagesAndClassesForItem(_ item: ChatMessageItem) -> ([
             result.append((messageWithCaptionToAdd, ChatMessageTextBubbleContentNode.self, itemAttributes, BubbleItemAttributes(isAttachment: false, neighborType: .text, neighborSpacing: .default)))
             needReactions = false
         }
+    }
+    
+    if let (firstContentMessage, firstContentClass, firstContentAttributes, _) = result.first, firstContentClass == ChatMessageTextBubbleContentNode.self, item.associatedData.antiSpoilerTopics[firstContentMessage.id] != nil {
+        result.insert((firstContentMessage, ChatMessageAntiSpoilerBubbleContentNode.self, firstContentAttributes, BubbleItemAttributes(isAttachment: false, neighborType: .text, neighborSpacing: .default)), at: 0)
     }
     
     if let (messageWithFactCheckToAdd, itemAttributes) = messageWithFactCheckToAdd, !hasSeparateCommentsButton {

@@ -718,7 +718,9 @@ final class ChatPinnedMessageTitlePanelNode: ChatTitleAccessoryPanelNode {
             mediaUpdated = true
         }
         
-        let hasSpoiler = message.attributes.contains(where: { $0 is MediaSpoilerMessageAttribute })
+        let antiSpoilerSettings = context.sharedContext.currentAntiSpoilerSettings.with { $0 }
+        let isAntiSpoiler = antiSpoilerTopic(messages: [message], settings: antiSpoilerSettings, accountPeerId: context.account.peerId, isPremium: context.isPremium) != nil
+        let hasSpoiler = message.attributes.contains(where: { $0 is MediaSpoilerMessageAttribute }) || (isAntiSpoiler && antiSpoilerSettings.hideMedia)
         
         var updateImageSignal: Signal<(TransformImageArguments) -> DrawingContext?, NoError>?
         var updatedFetchMediaSignal: Signal<EngineFetchResourceSourceType, EngineFetchResourceError>?
@@ -776,6 +778,10 @@ final class ChatPinnedMessageTitlePanelNode: ChatTitleAccessoryPanelNode {
                         break
                     }
                 }
+            }
+            
+            if isAntiSpoiler {
+                messageEntities.append(MessageTextEntity(range: 0 ..< (text as NSString).length, type: .Spoiler))
             }
             
             let entities = messageEntities.filter { entity in

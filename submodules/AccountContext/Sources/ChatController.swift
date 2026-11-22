@@ -70,6 +70,8 @@ public final class ChatMessageItemAssociatedData: Equatable {
     public let accountCountry: String?
     public let isParticipant: Bool
     public let invitedOn: Int32?
+    public let antiSpoilerSettings: AntiSpoilerSettings
+    public let antiSpoilerTopics: [EngineMessage.Id: String]
     
     public init(
         automaticDownloadPeerType: MediaAutoDownloadPeerType,
@@ -111,7 +113,9 @@ public final class ChatMessageItemAssociatedData: Equatable {
         showTextAsPlaceholder: Bool = false,
         accountCountry: String? = nil,
         isParticipant: Bool = false,
-        invitedOn: Int32? = nil
+        invitedOn: Int32? = nil,
+        antiSpoilerSettings: AntiSpoilerSettings = AntiSpoilerSettings.defaultSettings,
+        antiSpoilerTopics: [EngineMessage.Id: String] = [:]
     ) {
         self.automaticDownloadPeerType = automaticDownloadPeerType
         self.automaticDownloadPeerId = automaticDownloadPeerId
@@ -153,6 +157,8 @@ public final class ChatMessageItemAssociatedData: Equatable {
         self.accountCountry = accountCountry
         self.isParticipant = isParticipant
         self.invitedOn = invitedOn
+        self.antiSpoilerSettings = antiSpoilerSettings
+        self.antiSpoilerTopics = antiSpoilerTopics
     }
     
     public static func == (lhs: ChatMessageItemAssociatedData, rhs: ChatMessageItemAssociatedData) -> Bool {
@@ -262,6 +268,12 @@ public final class ChatMessageItemAssociatedData: Equatable {
             return false
         }
         if lhs.invitedOn != rhs.invitedOn {
+            return false
+        }
+        if lhs.antiSpoilerSettings != rhs.antiSpoilerSettings {
+            return false
+        }
+        if lhs.antiSpoilerTopics != rhs.antiSpoilerTopics {
             return false
         }
         return true

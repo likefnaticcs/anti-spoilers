@@ -1390,6 +1390,7 @@ public final class ChatListNode: ListViewImpl {
     private var pollFilterUpdatesDisposable: Disposable?
     private var chatFilterUpdatesDisposable: Disposable?
     private var updateIsMainTabDisposable: Disposable?
+    private var antiSpoilerSettingsDisposable: Disposable?
     
     public var scrollHeightTopInset: CGFloat {
         didSet {
@@ -3193,6 +3194,25 @@ public final class ChatListNode: ListViewImpl {
         self.pollFilterUpdates()
         self.resetFilter()
         
+        // Replacing the presentation data reloads all items
+        var isFirstAntiSpoilerSettings = true
+        self.antiSpoilerSettingsDisposable = (antiSpoilerSettings(accountManager: context.sharedContext.accountManager)
+        |> deliverOnMainQueue).startStrict(next: { [weak self] _ in
+            guard let self else {
+                return
+            }
+            if isFirstAntiSpoilerSettings {
+                isFirstAntiSpoilerSettings = false
+                return
+            }
+            self.updateState { state in
+                var state = state
+                let data = state.presentationData
+                state.presentationData = ChatListPresentationData(theme: data.theme, fontSize: data.fontSize, strings: data.strings, dateTimeFormat: data.dateTimeFormat, nameSortOrder: data.nameSortOrder, nameDisplayOrder: data.nameDisplayOrder, disableAnimations: data.disableAnimations)
+                return state
+            }
+        })
+        
         let selectionRecognizer = ChatHistoryListSelectionRecognizer(target: self, action: #selector(self.selectionPanGesture(_:)))
         selectionRecognizer.shouldBegin = { [weak self] in
             guard let strongSelf = self else {
@@ -3210,6 +3230,7 @@ public final class ChatListNode: ListViewImpl {
         self.pollFilterUpdatesDisposable?.dispose()
         self.chatFilterUpdatesDisposable?.dispose()
         self.updateIsMainTabDisposable?.dispose()
+        self.antiSpoilerSettingsDisposable?.dispose()
     }
     
     func updateFilter(_ filter: ChatListFilter?) {

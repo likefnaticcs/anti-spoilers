@@ -238,6 +238,7 @@ private class ExtendedMediaOverlayNode: ASDisplayNode {
     private var randomId: Int32?
     var isRevealed = false
     var tapped: () -> Void = {}
+    var buttonRevealsContent = false
     
     init(context: AccountContext, hasImageOverlay: Bool, icon: Icon?, enableAnimations: Bool) {
         self.context = context
@@ -292,6 +293,9 @@ private class ExtendedMediaOverlayNode: ASDisplayNode {
     
     @objc private func buttonPressed() {
         self.tapped()
+        if self.buttonRevealsContent {
+            self.reveal(animated: true)
+        }
     }
         
     override func didLoad() {
@@ -471,6 +475,7 @@ public final class ChatMessageInteractiveMediaNode: ASDisplayNode, GalleryItemTr
     public var automaticPlayback: Bool?
     private var preferredStoryHighQuality: Bool = false
     private var showSensitiveContent: Bool = false
+    private var antiSpoilerTopic: String?
     
     private let statusDisposable = MetaDisposable()
     private let fetchControls = Atomic<FetchControls?>(value: nil)
@@ -944,7 +949,8 @@ public final class ChatMessageInteractiveMediaNode: ASDisplayNode, GalleryItemTr
                 }
             }
             
-            let hasSpoiler = message.attributes.contains(where: { $0 is MediaSpoilerMessageAttribute })
+            let antiSpoilerTopic = associatedData.antiSpoilerSettings.hideMedia ? associatedData.antiSpoilerTopics[message.id] : nil
+            let hasSpoiler = message.attributes.contains(where: { $0 is MediaSpoilerMessageAttribute }) || antiSpoilerTopic != nil
             var isExtendedMediaPreview = false
             var isInlinePlayableVideo = false
             var isSticker = false
@@ -1887,6 +1893,7 @@ public final class ChatMessageInteractiveMediaNode: ASDisplayNode, GalleryItemTr
                             strongSelf.automaticDownload = automaticDownload
                             strongSelf.preferredStoryHighQuality = associatedData.preferredStoryHighQuality
                             strongSelf.showSensitiveContent = associatedData.showSensitiveContent
+                            strongSelf.antiSpoilerTopic = antiSpoilerTopic
                             
                             #if DEBUG && false
                             if strongSelf.testDeferHLSMedia && maybeRestoreHLSMedia && strongSelf.deferHLSMediaTimer == nil {
@@ -2140,7 +2147,7 @@ public final class ChatMessageInteractiveMediaNode: ASDisplayNode, GalleryItemTr
                                 }
                             }
                             
-                            if message.attributes.contains(where: { $0 is MediaSpoilerMessageAttribute }), strongSelf.extendedMediaOverlayNode == nil {
+                            if hasSpoiler, strongSelf.extendedMediaOverlayNode == nil {
                                 strongSelf.internallyVisible = false
                             }
                                                         
@@ -3086,6 +3093,13 @@ public final class ChatMessageInteractiveMediaNode: ASDisplayNode, GalleryItemTr
             }
         }
         
+        var antiSpoilerTopic: String?
+        if let topic = self.antiSpoilerTopic, !displaySpoiler {
+            displaySpoiler = true
+            icon = .eye
+            antiSpoilerTopic = topic
+        }
+        
         if displaySpoiler, let context = self.context {
             let extendedMediaOverlayNode: ExtendedMediaOverlayNode
             if let current = self.extendedMediaOverlayNode {
@@ -3105,6 +3119,7 @@ public final class ChatMessageInteractiveMediaNode: ASDisplayNode, GalleryItemTr
                         self.updateVisibility()
                     }
                 }
+                extendedMediaOverlayNode.buttonRevealsContent = antiSpoilerTopic != nil
                 self.extendedMediaOverlayNode = extendedMediaOverlayNode
                 self.pinchContainerNode.contentNode.insertSubnode(extendedMediaOverlayNode, aboveSubnode: self.imageNode)
             }
@@ -3122,7 +3137,10 @@ public final class ChatMessageInteractiveMediaNode: ASDisplayNode, GalleryItemTr
             extendedMediaOverlayNode.isUserInteractionEnabled = tappable
             
             var viewText: String = ""
-            if case .eye = icon {
+            if let antiSpoilerTopic {
+                viewText = wideLayout ? strings.AntiSpoiler_PossibleSpoiler(antiSpoilerTopic).string : strings.AntiSpoiler_PossibleSpoilerShort
+                extendedMediaOverlayNode.dustNode.revealOnTap = true
+            } else if case .eye = icon {
                 viewText = wideLayout ? strings.Chat_SensitiveContent : strings.Chat_SensitiveContentShort
                 extendedMediaOverlayNode.dustNode.revealOnTap = false
             } else {

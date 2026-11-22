@@ -32,6 +32,7 @@ public class ItemListCheckboxItem: ListViewItem, ItemListItem {
     let iconSize: CGSize?
     let iconPlacement: IconPlacement
     let title: String
+    let titleIcon: UIImage?
     let subtitle: String?
     let style: ItemListCheckboxItemStyle
     let color: ItemListCheckboxItemColor
@@ -44,13 +45,14 @@ public class ItemListCheckboxItem: ListViewItem, ItemListItem {
     let deleteAction: (() -> Void)?
     public let tag: Any?
     
-    public init(presentationData: ItemListPresentationData, systemStyle: ItemListSystemStyle = .legacy, icon: UIImage? = nil, iconSize: CGSize? = nil, iconPlacement: IconPlacement = .default, title: String, subtitle: String? = nil, style: ItemListCheckboxItemStyle, color: ItemListCheckboxItemColor = .accent, textColor: TextColor = .primary, checked: Bool, enabled: Bool = true, zeroSeparatorInsets: Bool, sectionId: ItemListSectionId, action: @escaping () -> Void, deleteAction: (() -> Void)? = nil, tag: Any? = nil) {
+    public init(presentationData: ItemListPresentationData, systemStyle: ItemListSystemStyle = .legacy, icon: UIImage? = nil, iconSize: CGSize? = nil, iconPlacement: IconPlacement = .default, title: String, titleIcon: UIImage? = nil, subtitle: String? = nil, style: ItemListCheckboxItemStyle, color: ItemListCheckboxItemColor = .accent, textColor: TextColor = .primary, checked: Bool, enabled: Bool = true, zeroSeparatorInsets: Bool, sectionId: ItemListSectionId, action: @escaping () -> Void, deleteAction: (() -> Void)? = nil, tag: Any? = nil) {
         self.presentationData = presentationData
         self.systemStyle = systemStyle
         self.icon = icon
         self.iconSize = iconSize
         self.iconPlacement = iconPlacement
         self.title = title
+        self.titleIcon = titleIcon
         self.subtitle = subtitle
         self.style = style
         self.color = color
@@ -121,6 +123,7 @@ public class ItemListCheckboxItemNode: ItemListRevealOptionsItemNode {
     private let imageNode: ASImageNode
     private let iconNode: ASImageNode
     private let titleNode: TextNode
+    private var titleIconNode: ASImageNode?
     private let subtitleNode: TextNode
     
     private var item: ItemListCheckboxItem?
@@ -372,6 +375,25 @@ public class ItemListCheckboxItemNode: ItemListRevealOptionsItemNode {
                     
                     strongSelf.titleNode.frame = CGRect(origin: CGPoint(x: leftInset, y: verticalInset + 1.0), size: titleLayout.size)
                     strongSelf.subtitleNode.frame = CGRect(origin: CGPoint(x: leftInset, y: strongSelf.titleNode.frame.maxY), size: subtitleLayout.size)
+                    
+                    if let titleIcon = item.titleIcon {
+                        let titleIconNode: ASImageNode
+                        if let current = strongSelf.titleIconNode {
+                            titleIconNode = current
+                        } else {
+                            titleIconNode = ASImageNode()
+                            titleIconNode.isLayerBacked = true
+                            titleIconNode.displayWithoutProcessing = true
+                            titleIconNode.displaysAsynchronously = false
+                            strongSelf.titleIconNode = titleIconNode
+                            strongSelf.contentContainerNode.addSubnode(titleIconNode)
+                        }
+                        titleIconNode.image = titleIcon
+                        titleIconNode.frame = CGRect(origin: CGPoint(x: strongSelf.titleNode.frame.maxX + 6.0, y: floorToScreenPixels(strongSelf.titleNode.frame.midY - titleIcon.size.height / 2.0)), size: titleIcon.size)
+                    } else if let titleIconNode = strongSelf.titleIconNode {
+                        strongSelf.titleIconNode = nil
+                        titleIconNode.removeFromSupernode()
+                    }
                     
                     if let icon = item.icon {
                         let iconSize = item.iconSize ?? icon.size

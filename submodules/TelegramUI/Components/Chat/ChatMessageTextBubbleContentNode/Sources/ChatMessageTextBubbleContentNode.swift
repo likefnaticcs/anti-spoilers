@@ -519,6 +519,11 @@ public class ChatMessageTextBubbleContentNode: ChatMessageBubbleContentNode {
                 }
                 
                 
+                // The spoiler is added after caching, so that the cached entities don't depend on the anti-spoiler settings
+                if item.associatedData.antiSpoilerTopics[item.message.id] != nil, !rawText.isEmpty {
+                    entities = (entities ?? []) + [MessageTextEntity(range: 0 ..< (rawText as NSString).length, type: .Spoiler)]
+                }
+                
                 let messageTheme = incoming ? item.presentationData.theme.theme.chat.message.incoming : item.presentationData.theme.theme.chat.message.outgoing
                 
                 let textFont = item.presentationData.messageFont

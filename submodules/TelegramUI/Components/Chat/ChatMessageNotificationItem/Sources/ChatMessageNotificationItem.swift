@@ -237,6 +237,12 @@ final class ChatMessageNotificationItemNode: NotificationItemNode {
             } else {
                 messageText = textString.string
             }
+            if item.context.isHiddenByAntiSpoiler(message: message) {
+                messageEntities = (messageEntities ?? []) + [MessageTextEntity(range: 0 ..< (messageText as NSString).length, type: .Spoiler)]
+            }
+            if item.context.isMediaHiddenByAntiSpoiler(message: message) {
+                imageDimensions = nil
+            }
             if message.restrictionReason(platform: "ios", contentSettings: item.context.currentContentSettings.with { $0 }) == nil, let preview = incomingGramTransferPreview(message: EngineMessage(message), accountPeerId: item.context.account.peerId, strings: item.strings, dateTimeFormat: item.dateTimeFormat, includeDiamond: true) {
                 messageText = preview.text
                 messageEntities = nil

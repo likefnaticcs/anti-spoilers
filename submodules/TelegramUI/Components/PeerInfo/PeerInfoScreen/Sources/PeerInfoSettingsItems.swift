@@ -246,6 +246,9 @@ func settingsItems(data: PeerInfoScreenData?, context: AccountContext, presentat
     items[.shortcuts]!.append(PeerInfoScreenDisclosureItem(id: 4, text: presentationData.strings.Settings_ChatFolders, icon: PresentationResourcesSettings.chatFolders, action: {
         interaction.openSettings(.chatFolders)
     }))
+    items[.shortcuts]!.append(PeerInfoScreenDisclosureItem(id: 5, text: presentationData.strings.AntiSpoiler_Title, icon: PresentationResourcesSettings.antiSpoiler, action: {
+        interaction.openSettings(.antiSpoiler)
+    }))
     
     let notificationsWarning: Bool
     if let settings = data.globalSettings {

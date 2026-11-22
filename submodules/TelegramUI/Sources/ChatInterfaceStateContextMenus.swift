@@ -1956,6 +1956,10 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
             }
         }
         
+        if let antiSpoilerAction = antiSpoilerContextMenuAction(context: context, messages: messages, controllerInteraction: controllerInteraction) {
+            actions.append(.action(antiSpoilerAction))
+        }
+        
         if data.messageActions.options.contains(.report) {
             actions.append(.action(ContextMenuActionItem(text: chatPresentationInterfaceState.strings.Conversation_ContextMenuReport, icon: { theme in
                 return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Report"), color: theme.actionSheet.primaryTextColor)

@@ -502,7 +502,7 @@ public final class ChatInputMessageAccessoryPanel: Component {
                  }
                  self.previousMediaReference = updatedMediaReference*/
                 
-                let hasSpoiler = message.attributes.contains(where: { $0 is MediaSpoilerMessageAttribute })
+                let hasSpoiler = message.attributes.contains(where: { $0 is MediaSpoilerMessageAttribute }) || component.context.isMediaHiddenByAntiSpoiler(message: message._asMessage())
                 
                 var updateImageSignal: Signal<(TransformImageArguments) -> DrawingContext?, NoError>?
                 let _ = updateImageSignal
@@ -541,13 +541,16 @@ public final class ChatInputMessageAccessoryPanel: Component {
                 if isText, message.richText != nil {
                     messageText = styleInstantPagePreview(attributedText, font: textFont, italicFont: Font.italic(14.0), textColor: environment.theme.chat.inputPanel.primaryTextColor)
                 } else if isText {
-                    let entities = (message._asMessage().textEntitiesAttribute?.entities ?? []).filter { entity in
+                    var entities = (message._asMessage().textEntitiesAttribute?.entities ?? []).filter { entity in
                         switch entity.type {
                         case .Spoiler, .CustomEmoji:
                             return true
                         default:
                             return false
                         }
+                    }
+                    if component.context.isHiddenByAntiSpoiler(message: message._asMessage()) {
+                        entities.append(MessageTextEntity(range: 0 ..< (trimToLineCount(message.text, lineCount: 1) as NSString).length, type: .Spoiler))
                     }
                     let textColor = environment.theme.chat.inputPanel.primaryTextColor
                     if entities.count > 0 {
@@ -712,6 +715,10 @@ public final class ChatInputMessageAccessoryPanel: Component {
                         default:
                             break
                         }
+                    }
+                    
+                    if component.context.isHiddenByAntiSpoiler(message: messages[0]._asMessage()) {
+                        additionalText.addAttribute(NSAttributedString.Key(rawValue: TelegramTextAttributes.Spoiler), value: true, range: NSRange(location: 0, length: additionalText.length))
                     }
                     
                     text.append(renderInstantPagePreviewIcons(additionalText, font: Font.regular(14.0), textColor: secondaryTextColor))

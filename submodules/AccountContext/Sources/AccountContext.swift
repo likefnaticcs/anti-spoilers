@@ -1424,6 +1424,7 @@ public protocol SharedAccountContext: AnyObject {
     var currentStickerSettings: Atomic<StickerSettings> { get }
     var currentMediaDisplaySettings: Atomic<MediaDisplaySettings> { get }
     var currentChatSettings: Atomic<ChatSettings> { get }
+    var currentAntiSpoilerSettings: Atomic<AntiSpoilerSettings> { get }
     
     var energyUsageSettings: EnergyUsageSettings { get }
     

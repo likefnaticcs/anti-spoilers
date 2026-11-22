@@ -479,6 +479,10 @@ public class ChatMessageReplyInfoNode: ASDisplayNode {
                         }
                     }
                 }
+                
+                if antiSpoilerTopic(messages: [message], settings: arguments.associatedData.antiSpoilerSettings, accountPeerId: arguments.context.account.peerId, isPremium: arguments.associatedData.isPremium) != nil {
+                    messageEntities.append(MessageTextEntity(range: 0 ..< (text as NSString).length, type: .Spoiler))
+                }
                     
                 let entities = messageEntities.filter { entity in
                     if case .Strikethrough = entity.type {
@@ -709,7 +713,7 @@ public class ChatMessageReplyInfoNode: ASDisplayNode {
             
             let hasSpoiler: Bool
             if let message = arguments.message {
-                hasSpoiler = message.attributes.contains(where: { $0 is MediaSpoilerMessageAttribute })
+                hasSpoiler = message.attributes.contains(where: { $0 is MediaSpoilerMessageAttribute }) || (arguments.associatedData.antiSpoilerSettings.hideMedia && antiSpoilerTopic(messages: [message], settings: arguments.associatedData.antiSpoilerSettings, accountPeerId: arguments.context.account.peerId, isPremium: arguments.associatedData.isPremium) != nil)
             } else {
                 hasSpoiler = false
             }

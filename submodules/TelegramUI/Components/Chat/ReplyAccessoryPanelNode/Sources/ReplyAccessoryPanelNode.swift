@@ -157,7 +157,7 @@ public final class ReplyAccessoryPanelNode: AccessoryPanelNode {
                 let textFont = Font.regular(15.0)
                 let messageText: NSAttributedString
                 if isText, let message = message {
-                    let entities = (message.textEntitiesAttribute?.entities ?? []).filter { entity in
+                    var entities = (message.textEntitiesAttribute?.entities ?? []).filter { entity in
                         switch entity.type {
                         case .Spoiler, .CustomEmoji:
                             return true
@@ -166,6 +166,9 @@ public final class ReplyAccessoryPanelNode: AccessoryPanelNode {
                         default:
                             return false
                         }
+                    }
+                    if context.isHiddenByAntiSpoiler(message: message) {
+                        entities.append(MessageTextEntity(range: 0 ..< (trimToLineCount(message.text, lineCount: 1) as NSString).length, type: .Spoiler))
                     }
                     let textColor = strongSelf.theme.chat.inputPanel.primaryTextColor
                     if entities.count > 0 {
@@ -223,7 +226,9 @@ public final class ReplyAccessoryPanelNode: AccessoryPanelNode {
                 }
                 strongSelf.previousMediaReference = updatedMediaReference
                 
-                let hasSpoiler = message?.attributes.contains(where: { $0 is MediaSpoilerMessageAttribute }) ?? false
+                let hasSpoiler = message.flatMap({ message in
+                    return message.attributes.contains(where: { $0 is MediaSpoilerMessageAttribute }) || context.isMediaHiddenByAntiSpoiler(message: message)
+                }) ?? false
                 
                 var updateImageSignal: Signal<(TransformImageArguments) -> DrawingContext?, NoError>?
                 if mediaUpdated {

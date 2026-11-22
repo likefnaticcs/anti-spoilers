@@ -1002,7 +1002,8 @@ private final class ChatListMediaPreviewNode: ASDisplayNode {
             self.playIcon.frame = CGRect(origin: CGPoint(x: floor((size.width - image.size.width) / 2.0), y: floor((size.height - image.size.height) / 2.0)), size: image.size)
         }
         
-        let hasSpoiler = self.message.attributes.contains(where: { $0 is MediaSpoilerMessageAttribute })
+        let antiSpoilerSettings = self.context.sharedContext.currentAntiSpoilerSettings.with { $0 }
+        let hasSpoiler = self.message.attributes.contains(where: { $0 is MediaSpoilerMessageAttribute }) || (antiSpoilerSettings.hideMedia && antiSpoilerTopic(messages: [self.message._asMessage()], settings: antiSpoilerSettings, accountPeerId: self.context.account.peerId, isPremium: self.context.isPremium) != nil)
         
         var isRound = false
         var dimensions = CGSize(width: 100.0, height: 100.0)
@@ -2878,9 +2879,15 @@ public class ChatListItemNode: ItemListRevealOptionsItemNode {
                             entities.append(contentsOf: customTextEntities.textEntities)
                         }
                         
+                        var antiSpoilerEntities: [MessageTextEntity] = []
+                        if antiSpoilerTopic(messages: messages.map { $0._asMessage() }, settings: item.context.sharedContext.currentAntiSpoilerSettings.with { $0 }, accountPeerId: item.context.account.peerId, isPremium: item.context.isPremium) != nil {
+                            antiSpoilerEntities.append(MessageTextEntity(range: 0 ..< (messageText as NSString).length, type: .Spoiler))
+                            entities.append(contentsOf: antiSpoilerEntities)
+                        }
+                        
                         let messageString: NSAttributedString
                         if let foldedRichTextPreview {
-                            let spoilerRanges = (customTextEntities?.textEntities ?? []).compactMap { entity -> NSRange? in
+                            let spoilerRanges = ((customTextEntities?.textEntities ?? []) + antiSpoilerEntities).compactMap { entity -> NSRange? in
                                 guard case .Spoiler = entity.type else { return nil }
                                 return NSRange(location: entity.range.lowerBound, length: entity.range.count)
                             }
