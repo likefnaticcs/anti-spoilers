@@ -2,16 +2,23 @@ import Foundation
 import TelegramCore
 import SwiftSignalKit
 
+public enum AntiSpoilerMode: Int32 {
+    case allMentions = 0
+    case spoilersOnly = 1
+}
+
 public struct AntiSpoilerTopic: Codable, Equatable {
     public let id: Int64
     public var title: String
     public var keywords: [String]
+    public var mode: AntiSpoilerMode
     public var isCompleted: Bool
     
-    public init(id: Int64, title: String, keywords: [String], isCompleted: Bool) {
+    public init(id: Int64, title: String, keywords: [String], mode: AntiSpoilerMode = .allMentions, isCompleted: Bool) {
         self.id = id
         self.title = title
         self.keywords = keywords
+        self.mode = mode
         self.isCompleted = isCompleted
     }
     
@@ -21,6 +28,7 @@ public struct AntiSpoilerTopic: Codable, Equatable {
         self.id = try container.decode(Int64.self, forKey: "id")
         self.title = try container.decode(String.self, forKey: "title")
         self.keywords = try container.decode([String].self, forKey: "keywords")
+        self.mode = (try container.decodeIfPresent(Int32.self, forKey: "mode")).flatMap(AntiSpoilerMode.init(rawValue:)) ?? .allMentions
         self.isCompleted = (try container.decode(Int32.self, forKey: "isCompleted")) != 0
     }
     
@@ -30,6 +38,7 @@ public struct AntiSpoilerTopic: Codable, Equatable {
         try container.encode(self.id, forKey: "id")
         try container.encode(self.title, forKey: "title")
         try container.encode(self.keywords, forKey: "keywords")
+        try container.encode(self.mode.rawValue, forKey: "mode")
         try container.encode((self.isCompleted ? 1 : 0) as Int32, forKey: "isCompleted")
     }
     
@@ -104,26 +113,19 @@ public struct AntiSpoilerTopic: Codable, Equatable {
     }
 }
 
-public enum AntiSpoilerMode: Int32 {
-    case allMentions = 0
-    case spoilersOnly = 1
-}
-
 public struct AntiSpoilerSettings: Codable, Equatable {
     public var isEnabled: Bool
     public var hideMedia: Bool
-    public var mode: AntiSpoilerMode
     public var topics: [AntiSpoilerTopic]
     public var excludedPeerIds: [EnginePeer.Id]
     
     public static var defaultSettings: AntiSpoilerSettings {
-        return AntiSpoilerSettings(isEnabled: true, hideMedia: true, mode: .allMentions, topics: [], excludedPeerIds: [])
+        return AntiSpoilerSettings(isEnabled: true, hideMedia: true, topics: [], excludedPeerIds: [])
     }
     
-    public init(isEnabled: Bool, hideMedia: Bool, mode: AntiSpoilerMode, topics: [AntiSpoilerTopic], excludedPeerIds: [EnginePeer.Id]) {
+    public init(isEnabled: Bool, hideMedia: Bool, topics: [AntiSpoilerTopic], excludedPeerIds: [EnginePeer.Id]) {
         self.isEnabled = isEnabled
         self.hideMedia = hideMedia
-        self.mode = mode
         self.topics = topics
         self.excludedPeerIds = excludedPeerIds
     }
@@ -133,7 +135,6 @@ public struct AntiSpoilerSettings: Codable, Equatable {
         
         self.isEnabled = (try container.decode(Int32.self, forKey: "isEnabled")) != 0
         self.hideMedia = (try container.decode(Int32.self, forKey: "hideMedia")) != 0
-        self.mode = AntiSpoilerMode(rawValue: try container.decode(Int32.self, forKey: "mode")) ?? .allMentions
         self.topics = try container.decode([AntiSpoilerTopic].self, forKey: "topics")
         self.excludedPeerIds = (try container.decode([Int64].self, forKey: "excludedPeerIds")).map { EnginePeer.Id($0) }
     }
@@ -143,7 +144,6 @@ public struct AntiSpoilerSettings: Codable, Equatable {
         
         try container.encode((self.isEnabled ? 1 : 0) as Int32, forKey: "isEnabled")
         try container.encode((self.hideMedia ? 1 : 0) as Int32, forKey: "hideMedia")
-        try container.encode(self.mode.rawValue, forKey: "mode")
         try container.encode(self.topics, forKey: "topics")
         try container.encode(self.excludedPeerIds.map { $0.toInt64() }, forKey: "excludedPeerIds")
     }
@@ -152,8 +152,8 @@ public struct AntiSpoilerSettings: Codable, Equatable {
         return self.isEnabled && self.topics.contains(where: { !$0.isCompleted })
     }
     
-    /// Returns the first active topic mentioned in `texts`.
-    public func matchingTopic(texts: [String]) -> AntiSpoilerTopic? {
+    /// Returns the first active topic mentioned in `texts`. Topics that hide only spoilers are skipped if `includeSpoilersOnly` is not set.
+    public func matchingTopic(texts: [String], includeSpoilersOnly: Bool) -> AntiSpoilerTopic? {
         if !self.isActive {
             return nil
         }
@@ -161,7 +161,7 @@ public struct AntiSpoilerSettings: Codable, Equatable {
         if tokenizedTexts.isEmpty {
             return nil
         }
-        return self.topics.first(where: { !$0.isCompleted && $0.matches(tokenizedTexts: tokenizedTexts) })
+        return self.topics.first(where: { !$0.isCompleted && (includeSpoilersOnly || $0.mode != .spoilersOnly) && $0.matches(tokenizedTexts: tokenizedTexts) })
     }
 }
 

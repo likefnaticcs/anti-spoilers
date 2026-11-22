@@ -10,7 +10,7 @@ You add a film, series or game, and every incoming post that mentions it is cove
 - **Topics with keywords**: keyword chips with suggestions. `GTA 6`, `GTA-6` and `#gta6` are the same keyword, `GTA 60` is not.
 - **Hide as Spoiler** in the menu of any incoming post. The topic is taken from the post and can be edited before saving.
 - **I'm Caught Up** in the menu of a hidden post and in the topic. The topic moves to the Caught Up section.
-- **Only Spoilers** mode for Telegram Premium: news and reviews stay visible, only posts marked as spoilers are covered.
+- **What to hide** is chosen in every topic: everything about it, or **Only Spoilers** (Telegram Premium), when news and reviews stay visible and only posts marked as spoilers are covered.
 - Covered places: bubbles and albums, chat list, search, replies, the reply and forward panel, pinned messages, shared media and the in-app banner.
 - Text uses Telegram's own spoiler effect, media uses the spoiler overlay. Your own messages are never hidden.
 

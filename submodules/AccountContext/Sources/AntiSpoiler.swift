@@ -32,16 +32,17 @@ public func antiSpoilerTopic(messages: [Message], settings: AntiSpoilerSettings,
     if settings.excludedPeerIds.contains(message.id.peerId) {
         return nil
     }
-    if settings.mode == .spoilersOnly && isPremium {
+    var includeSpoilersOnly = true
+    if isPremium {
         // Messages that are not checked yet stay hidden
         let classifications = messages.compactMap { message in
             return message.attributes.first(where: { $0 is SpoilerClassificationMessageAttribute }) as? SpoilerClassificationMessageAttribute
         }
         if !classifications.isEmpty && !classifications.contains(where: { $0.isSpoiler }) {
-            return nil
+            includeSpoilersOnly = false
         }
     }
-    return settings.matchingTopic(texts: messages.flatMap(antiSpoilerTexts))
+    return settings.matchingTopic(texts: messages.flatMap(antiSpoilerTexts), includeSpoilersOnly: includeSpoilersOnly)
 }
 
 /// Suggests a topic for "Hide as Spoiler". The title is empty if nothing suitable is found in the message.

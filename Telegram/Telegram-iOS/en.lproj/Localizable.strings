@@ -17102,7 +17102,7 @@ Error: %8$@";
 "AntiSpoiler.EnabledInfo" = "Posts that mention your topics are covered until you tap them.";
 "AntiSpoiler.HideMedia" = "Hide Photos and Videos";
 "AntiSpoiler.ModeHeader" = "WHAT TO HIDE";
-"AntiSpoiler.ModeAll" = "Everything About the Topic";
+"AntiSpoiler.ModeAll" = "Everything";
 "AntiSpoiler.ModeSpoilers" = "Only Spoilers";
 "AntiSpoiler.ModeSpoilersPremium" = "Available with Telegram Premium";
 "AntiSpoiler.ModeInfo" = "**Only Spoilers** uses AI to check every post, so that news and reviews stay visible.";

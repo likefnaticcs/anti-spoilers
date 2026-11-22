@@ -16,6 +16,7 @@ private final class AntiSpoilerTopicControllerArguments {
     let addKeywords: (String) -> Void
     let addSuggestion: (String) -> Void
     let removeKeyword: (String) -> Void
+    let updateMode: (AntiSpoilerMode) -> Void
     let toggleCompleted: () -> Void
     let delete: () -> Void
     
@@ -25,6 +26,7 @@ private final class AntiSpoilerTopicControllerArguments {
         addKeywords: @escaping (String) -> Void,
         addSuggestion: @escaping (String) -> Void,
         removeKeyword: @escaping (String) -> Void,
+        updateMode: @escaping (AntiSpoilerMode) -> Void,
         toggleCompleted: @escaping () -> Void,
         delete: @escaping () -> Void
     ) {
@@ -33,6 +35,7 @@ private final class AntiSpoilerTopicControllerArguments {
         self.addKeywords = addKeywords
         self.addSuggestion = addSuggestion
         self.removeKeyword = removeKeyword
+        self.updateMode = updateMode
         self.toggleCompleted = toggleCompleted
         self.delete = delete
     }
@@ -42,6 +45,7 @@ private enum AntiSpoilerTopicSection: Int32 {
     case title
     case keywords
     case suggestions
+    case mode
     case completed
     case delete
 }
@@ -54,6 +58,10 @@ private enum AntiSpoilerTopicEntry: ItemListNodeEntry {
     case keywordsInfo
     case suggestionsHeader
     case suggestions([String])
+    case modeHeader
+    case modeAll(isSelected: Bool)
+    case modeSpoilers(isSelected: Bool, isLocked: Bool)
+    case modeInfo
     case completed(Bool)
     case completedInfo
     case delete
@@ -66,6 +74,8 @@ private enum AntiSpoilerTopicEntry: ItemListNodeEntry {
             return AntiSpoilerTopicSection.keywords.rawValue
         case .suggestionsHeader, .suggestions:
             return AntiSpoilerTopicSection.suggestions.rawValue
+        case .modeHeader, .modeAll, .modeSpoilers, .modeInfo:
+            return AntiSpoilerTopicSection.mode.rawValue
         case .completed, .completedInfo:
             return AntiSpoilerTopicSection.completed.rawValue
         case .delete:
@@ -89,12 +99,20 @@ private enum AntiSpoilerTopicEntry: ItemListNodeEntry {
             return 5
         case .suggestions:
             return 6
-        case .completed:
+        case .modeHeader:
             return 7
-        case .completedInfo:
+        case .modeAll:
             return 8
-        case .delete:
+        case .modeSpoilers:
             return 9
+        case .modeInfo:
+            return 10
+        case .completed:
+            return 11
+        case .completedInfo:
+            return 12
+        case .delete:
+            return 13
         }
     }
     
@@ -130,6 +148,18 @@ private enum AntiSpoilerTopicEntry: ItemListNodeEntry {
             return AntiSpoilerSuggestionsItem(presentationData: presentationData, suggestions: suggestions, sectionId: self.section, action: { suggestion in
                 arguments.addSuggestion(suggestion)
             })
+        case .modeHeader:
+            return ItemListSectionHeaderItem(presentationData: presentationData, text: strings.AntiSpoiler_ModeHeader, sectionId: self.section)
+        case let .modeAll(isSelected):
+            return ItemListCheckboxItem(presentationData: presentationData, systemStyle: .glass, title: strings.AntiSpoiler_ModeAll, style: .left, checked: isSelected, zeroSeparatorInsets: false, sectionId: self.section, action: {
+                arguments.updateMode(.allMentions)
+            })
+        case let .modeSpoilers(isSelected, isLocked):
+            return ItemListCheckboxItem(presentationData: presentationData, systemStyle: .glass, icon: isLocked ? generateTintedImage(image: UIImage(bundleImageName: "Chat/Stickers/Lock"), color: presentationData.theme.list.itemSecondaryTextColor) : nil, iconPlacement: .check, title: strings.AntiSpoiler_ModeSpoilers, titleIcon: PresentationResourcesItemList.premiumIcon(presentationData.theme), subtitle: isLocked ? strings.AntiSpoiler_ModeSpoilersPremium : nil, style: .left, checked: isSelected, zeroSeparatorInsets: false, sectionId: self.section, action: {
+                arguments.updateMode(.spoilersOnly)
+            })
+        case .modeInfo:
+            return ItemListTextItem(presentationData: presentationData, text: .markdown(strings.AntiSpoiler_ModeInfo), sectionId: self.section)
         case let .completed(value):
             return ItemListActionItem(presentationData: presentationData, systemStyle: .glass, title: value ? strings.AntiSpoiler_HideAgain : strings.AntiSpoiler_CaughtUp, kind: .generic, alignment: .center, sectionId: self.section, style: .blocks, action: {
                 arguments.toggleCompleted()
@@ -148,6 +178,7 @@ private struct AntiSpoilerTopicControllerState: Equatable {
     var title: String
     var keywords: [String]
     var keywordInput: String
+    var mode: AntiSpoilerMode
     
     mutating func add(keywords: [String]) {
         for keyword in keywords where !self.keywords.contains(where: { $0.lowercased() == keyword.lowercased() }) {
@@ -163,7 +194,7 @@ private func antiSpoilerKeywords(_ text: String) -> [String] {
 /// `isSuggested` is set for a topic that is prefilled from a message and not yet added.
 public func antiSpoilerTopicController(context: AccountContext, topic: AntiSpoilerTopic?, isSuggested: Bool = false, messageSuggestions: [String] = [], completion: ((AntiSpoilerTopic) -> Void)? = nil) -> ViewController {
     let accountManager = context.sharedContext.accountManager
-    let initialState = AntiSpoilerTopicControllerState(title: topic?.title ?? "", keywords: topic?.keywords ?? [], keywordInput: "")
+    let initialState = AntiSpoilerTopicControllerState(title: topic?.title ?? "", keywords: topic?.keywords ?? [], keywordInput: "", mode: topic?.mode ?? .allMentions)
     let statePromise = ValuePromise(initialState, ignoreRepeated: true)
     let stateValue = Atomic(value: initialState)
     let updateState: ((inout AntiSpoilerTopicControllerState) -> Void) -> Void = { f in
@@ -177,6 +208,7 @@ public func antiSpoilerTopicController(context: AccountContext, topic: AntiSpoil
     var dismissImpl: (() -> Void)?
     var presentConfettiImpl: (() -> Void)?
     var presentImpl: ((ViewController) -> Void)?
+    var pushImpl: ((ViewController) -> Void)?
     
     let arguments = AntiSpoilerTopicControllerArguments(
         updateTitle: { value in
@@ -199,13 +231,22 @@ public func antiSpoilerTopicController(context: AccountContext, topic: AntiSpoil
                 state.keywords.removeAll(where: { $0 == keyword })
             }
         },
+        updateMode: { mode in
+            if mode == .spoilersOnly && !context.isPremium {
+                pushImpl?(context.sharedContext.makePremiumIntroController(context: context, source: .aiTools, forceDark: false, dismissed: nil))
+                return
+            }
+            updateState { $0.mode = mode }
+        },
         toggleCompleted: {
             guard let topic else {
                 return
             }
+            let mode = stateValue.with { $0.mode }
             let _ = updateAntiSpoilerSettingsInteractively(accountManager: accountManager, { settings in
                 var settings = settings
                 if let index = settings.topics.firstIndex(where: { $0.id == topic.id }) {
+                    settings.topics[index].mode = mode
                     settings.topics[index].isCompleted = !topic.isCompleted
                 }
                 return settings
@@ -242,7 +283,7 @@ public func antiSpoilerTopicController(context: AccountContext, topic: AntiSpoil
         if title.isEmpty {
             return
         }
-        let updatedTopic = AntiSpoilerTopic(id: topic?.id ?? Int64.random(in: 1000 ... Int64.max), title: title, keywords: state.keywords, isCompleted: topic?.isCompleted ?? false)
+        let updatedTopic = AntiSpoilerTopic(id: topic?.id ?? Int64.random(in: 1000 ... Int64.max), title: title, keywords: state.keywords, mode: state.mode, isCompleted: topic?.isCompleted ?? false)
         let _ = updateAntiSpoilerSettingsInteractively(accountManager: accountManager, { settings in
             var settings = settings
             if let index = settings.topics.firstIndex(where: { $0.id == updatedTopic.id }) {
@@ -259,11 +300,18 @@ public func antiSpoilerTopicController(context: AccountContext, topic: AntiSpoil
         dismissImpl?()
     }
     
+    let isPremium = context.engine.data.subscribe(TelegramEngine.EngineData.Item.Peer.Peer(id: context.account.peerId))
+    |> map { peer -> Bool in
+        return peer?.isPremium ?? false
+    }
+    |> distinctUntilChanged
+    
     let signal = combineLatest(queue: .mainQueue(),
         context.sharedContext.presentationData,
-        statePromise.get()
+        statePromise.get(),
+        isPremium
     )
-    |> map { presentationData, state -> (ItemListControllerState, (ItemListNodeState, Any)) in
+    |> map { presentationData, state, isPremium -> (ItemListControllerState, (ItemListNodeState, Any)) in
         let strings = presentationData.strings
         let canSave = !state.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         let rightNavigationButton = ItemListNavigationButton(content: .text(presentationData.strings.Common_Done), style: .bold, enabled: canSave, action: {
@@ -288,6 +336,11 @@ public func antiSpoilerTopicController(context: AccountContext, topic: AntiSpoil
             entries.append(.suggestionsHeader)
             entries.append(.suggestions(Array(suggestions.prefix(10))))
         }
+        let mode: AntiSpoilerMode = isPremium ? state.mode : .allMentions
+        entries.append(.modeHeader)
+        entries.append(.modeAll(isSelected: mode == .allMentions))
+        entries.append(.modeSpoilers(isSelected: mode == .spoilersOnly, isLocked: !isPremium))
+        entries.append(.modeInfo)
         if let topic, !isSuggested {
             entries.append(.completed(topic.isCompleted))
             if !topic.isCompleted {
@@ -334,6 +387,9 @@ public func antiSpoilerTopicController(context: AccountContext, topic: AntiSpoil
             })
         ]))
         return false
+    }
+    pushImpl = { [weak controller] c in
+        controller?.push(c)
     }
     presentImpl = { [weak controller] c in
         controller?.present(c, in: .window(.root))

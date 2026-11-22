@@ -15,7 +15,6 @@ private final class AntiSpoilerSettingsControllerArguments {
     let context: AccountContext
     let updateEnabled: (Bool) -> Void
     let updateHideMedia: (Bool) -> Void
-    let updateMode: (AntiSpoilerMode) -> Void
     let openTopic: (AntiSpoilerTopic?) -> Void
     let addPopularTopic: (AntiSpoilerTopic) -> Void
     let addException: () -> Void
@@ -26,7 +25,6 @@ private final class AntiSpoilerSettingsControllerArguments {
         context: AccountContext,
         updateEnabled: @escaping (Bool) -> Void,
         updateHideMedia: @escaping (Bool) -> Void,
-        updateMode: @escaping (AntiSpoilerMode) -> Void,
         openTopic: @escaping (AntiSpoilerTopic?) -> Void,
         addPopularTopic: @escaping (AntiSpoilerTopic) -> Void,
         addException: @escaping () -> Void,
@@ -36,7 +34,6 @@ private final class AntiSpoilerSettingsControllerArguments {
         self.context = context
         self.updateEnabled = updateEnabled
         self.updateHideMedia = updateHideMedia
-        self.updateMode = updateMode
         self.openTopic = openTopic
         self.addPopularTopic = addPopularTopic
         self.addException = addException
@@ -50,7 +47,6 @@ private enum AntiSpoilerSettingsSection: Int32 {
     case topics
     case completed
     case popular
-    case mode
     case exceptions
 }
 
@@ -66,14 +62,10 @@ private enum AntiSpoilerSettingsEntry: ItemListNodeEntry {
     case enabledInfo
     case topicsHeader
     case addTopic
-    case topic(index: Int, topic: AntiSpoilerTopic)
+    case topic(index: Int, topic: AntiSpoilerTopic, mode: AntiSpoilerMode)
     case topicsInfo
     case popularHeader
     case popularTopic(index: Int, topic: AntiSpoilerTopic)
-    case modeHeader
-    case modeAll(isSelected: Bool)
-    case modeSpoilers(isSelected: Bool, isLocked: Bool)
-    case modeInfo
     case exceptionsHeader
     case addException
     case exception(index: Int, peer: EnginePeer, isRevealed: Bool)
@@ -89,8 +81,6 @@ private enum AntiSpoilerSettingsEntry: ItemListNodeEntry {
             return AntiSpoilerSettingsSection.topics.rawValue
         case .popularHeader, .popularTopic:
             return AntiSpoilerSettingsSection.popular.rawValue
-        case .modeHeader, .modeAll, .modeSpoilers, .modeInfo:
-            return AntiSpoilerSettingsSection.mode.rawValue
         case .exceptionsHeader, .addException, .exception, .exceptionsInfo:
             return AntiSpoilerSettingsSection.exceptions.rawValue
         case .completedHeader, .completedTopic:
@@ -100,7 +90,7 @@ private enum AntiSpoilerSettingsEntry: ItemListNodeEntry {
     
     var stableId: AntiSpoilerSettingsEntryId {
         switch self {
-        case let .topic(_, topic), let .popularTopic(_, topic), let .completedTopic(_, topic):
+        case let .topic(_, topic, _), let .popularTopic(_, topic), let .completedTopic(_, topic):
             return .topic(topic.id)
         case let .exception(_, peer, _):
             return .peer(peer.id)
@@ -121,7 +111,7 @@ private enum AntiSpoilerSettingsEntry: ItemListNodeEntry {
             return 3
         case .addTopic:
             return 4
-        case let .topic(index, _):
+        case let .topic(index, _, _):
             return 1000 + index
         case .topicsInfo:
             return 2000
@@ -129,14 +119,6 @@ private enum AntiSpoilerSettingsEntry: ItemListNodeEntry {
             return 2900
         case let .popularTopic(index, _):
             return 3000 + index
-        case .modeHeader:
-            return 4000
-        case .modeAll:
-            return 4001
-        case .modeSpoilers:
-            return 4002
-        case .modeInfo:
-            return 4003
         case .exceptionsHeader:
             return 4004
         case .addException:
@@ -176,7 +158,11 @@ private enum AntiSpoilerSettingsEntry: ItemListNodeEntry {
             return ItemListPeerActionItem(presentationData: presentationData, systemStyle: .glass, icon: PresentationResourcesItemList.plusIconImage(presentationData.theme), title: strings.AntiSpoiler_AddTopic, sectionId: self.section, height: .generic, editing: false, action: {
                 arguments.openTopic(nil)
             })
-        case let .topic(_, topic), let .completedTopic(_, topic):
+        case let .topic(_, topic, mode):
+            return ItemListDisclosureItem(presentationData: presentationData, systemStyle: .glass, title: topic.title, label: mode == .spoilersOnly ? strings.AntiSpoiler_ModeSpoilers : strings.AntiSpoiler_ModeAll, labelStyle: .detailText, sectionId: self.section, style: .blocks, action: {
+                arguments.openTopic(topic)
+            })
+        case let .completedTopic(_, topic):
             return ItemListDisclosureItem(presentationData: presentationData, systemStyle: .glass, title: topic.title, label: "", sectionId: self.section, style: .blocks, action: {
                 arguments.openTopic(topic)
             })
@@ -188,18 +174,6 @@ private enum AntiSpoilerSettingsEntry: ItemListNodeEntry {
             return ItemListDisclosureItem(presentationData: presentationData, systemStyle: .glass, title: topic.title, label: strings.AntiSpoiler_PopularAdd, labelStyle: .coloredText(presentationData.theme.list.itemAccentColor), sectionId: self.section, style: .blocks, disclosureStyle: .none, action: {
                 arguments.addPopularTopic(topic)
             })
-        case .modeHeader:
-            return ItemListSectionHeaderItem(presentationData: presentationData, text: strings.AntiSpoiler_ModeHeader, sectionId: self.section)
-        case let .modeAll(isSelected):
-            return ItemListCheckboxItem(presentationData: presentationData, systemStyle: .glass, title: strings.AntiSpoiler_ModeAll, style: .left, checked: isSelected, zeroSeparatorInsets: false, sectionId: self.section, action: {
-                arguments.updateMode(.allMentions)
-            })
-        case let .modeSpoilers(isSelected, isLocked):
-            return ItemListCheckboxItem(presentationData: presentationData, systemStyle: .glass, icon: isLocked ? generateTintedImage(image: UIImage(bundleImageName: "Chat/Stickers/Lock"), color: presentationData.theme.list.itemSecondaryTextColor) : nil, iconPlacement: .check, title: strings.AntiSpoiler_ModeSpoilers, titleIcon: PresentationResourcesItemList.premiumIcon(presentationData.theme), subtitle: isLocked ? strings.AntiSpoiler_ModeSpoilersPremium : nil, style: .left, checked: isSelected, zeroSeparatorInsets: false, sectionId: self.section, action: {
-                arguments.updateMode(.spoilersOnly)
-            })
-        case .modeInfo:
-            return ItemListTextItem(presentationData: presentationData, text: .markdown(strings.AntiSpoiler_ModeInfo), sectionId: self.section)
         case .exceptionsHeader:
             return ItemListSectionHeaderItem(presentationData: presentationData, text: strings.AntiSpoiler_ExceptionsHeader, sectionId: self.section)
         case .addException:
@@ -234,7 +208,7 @@ private func antiSpoilerSettingsEntries(settings: AntiSpoilerSettings, excludedP
     entries.append(.topicsHeader)
     entries.append(.addTopic)
     for (index, topic) in settings.topics.filter({ !$0.isCompleted }).enumerated() {
-        entries.append(.topic(index: index, topic: topic))
+        entries.append(.topic(index: index, topic: topic, mode: isPremium ? topic.mode : .allMentions))
     }
     entries.append(.topicsInfo)
     
@@ -255,12 +229,6 @@ private func antiSpoilerSettingsEntries(settings: AntiSpoilerSettings, excludedP
             entries.append(.popularTopic(index: index, topic: topic))
         }
     }
-    
-    let mode: AntiSpoilerMode = isPremium ? settings.mode : .allMentions
-    entries.append(.modeHeader)
-    entries.append(.modeAll(isSelected: mode == .allMentions))
-    entries.append(.modeSpoilers(isSelected: mode == .spoilersOnly, isLocked: !isPremium))
-    entries.append(.modeInfo)
     
     entries.append(.exceptionsHeader)
     entries.append(.addException)
@@ -291,13 +259,6 @@ public func antiSpoilerSettingsController(context: AccountContext) -> ViewContro
         },
         updateHideMedia: { value in
             updateSettings { $0.hideMedia = value }
-        },
-        updateMode: { mode in
-            if mode == .spoilersOnly && !context.isPremium {
-                pushControllerImpl?(context.sharedContext.makePremiumIntroController(context: context, source: .aiTools, forceDark: false, dismissed: nil))
-                return
-            }
-            updateSettings { $0.mode = mode }
         },
         openTopic: { topic in
             pushControllerImpl?(antiSpoilerTopicController(context: context, topic: topic))
